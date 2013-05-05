@@ -204,16 +204,6 @@
         player.position.set( 0, size, 0 );
         world.add( player );
 
-
-// DEBUG: wireframe sphere
-var geometry = new THREE.SphereGeometry( size );
-var material = new THREE.MeshBasicMaterial({ wireframe: true, color: 0x444444 });
-debugPlayerMesh = new THREE.Mesh( geometry, material );
-debugPlayerMesh.position.set( 0, size, 0 );
-debugPlayerMesh.useQuaternion = true;
-scene.add( debugPlayerMesh );
-
-
         // BIG BLOCK
         addBlock( new THREE.Vector3(300, 1000, 100), new THREE.Vector3(100, 100, 100), 1000, physicsMaterial );
 
@@ -286,7 +276,7 @@ scene.add( debugPlayerMesh );
           cloneCharacter.shareParts(baseCharacter);
           cloneCharacter.enableShadows(true);
           //cloneCharacter.setWeapon(0);
-          cloneCharacter.setSkin(Math.floor(Math.random() * numPlayerSkins));
+          cloneCharacter.setSkin( 11 );
 
           scene.add(cloneCharacter.root);
 
@@ -370,14 +360,17 @@ scene.add( debugPlayerMesh );
 
         // Players protective barrier
         if (player instanceof CANNON.RigidBody) {
-          //console.log(playerMesh.root.position);
 
-          /**
-           * Problem: This prevents player from moving :(
-           **/
-          //player.position.copy( playerMesh.root.position );
-          //player.quaternion.copy( playerMesh.root.quaternion );
-          //player.velocity.copy( new THREE.Vector3() );
+          // Stabilize bounding sphere.
+          var v3 = new CANNON.Vec3();
+          player.velocity.copy( v3 );
+          player.quaternion.set( 1,0,0,0 );
+          player.inertia.set( 0,0,0 );
+          player.invInertia.set( 0,0,0 );
+
+          // Follow the player mesh.
+          var p = playerMesh.root.position;
+          player.position.set( p.x, p.y, p.z );
         }
 
         var l = blocks.length;
