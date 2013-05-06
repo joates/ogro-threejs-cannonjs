@@ -15,6 +15,11 @@
 
   <body>
 
+    <!-- Thanks @aral for ‘Fork me on GitHub’ design..
+         http://aralbalkan.com/scribbles/fork-me-on-github-retina-ribbons/ -->
+    <a href="https://github.com/joates/ogro-threejs-cannonjs">
+    <img style="position: absolute; top: 0; right: 0; border: 0; width: 149px; height: 149px;" src="http://aral.github.com/fork-me-on-github-retina-ribbons/right-dusk-blue@2x.png" alt="Fork me on GitHub" /></a>
+
     <script>
 
       /** WebGL context is required **/
@@ -28,7 +33,9 @@
           HEIGHT = window.innerHeight;
 
       var player,
-          playerMesh, debugPlayerMesh,
+          playerMesh,
+          debugPlayerMesh,
+          playerSkin = 11,
           numPlayerSkins,
           playerControls = {
             moveForward:  false,
@@ -193,16 +200,28 @@
 
         // CREATE A PHYSICS GROUND PLANE
         var groundShape = new CANNON.Plane();
-        var groundBody = new CANNON.RigidBody(0,groundShape,physicsMaterial);
-        groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1,0,0),-Math.PI/2);
-        world.add(groundBody);
+        var groundBody = new CANNON.RigidBody( 0, groundShape, physicsMaterial );
+        groundBody.quaternion.setFromAxisAngle( new CANNON.Vec3( 1, 0, 0 ), - Math.PI / 2 );
+        world.add( groundBody );
 
         // PLAYERS PHYSICS
         var size = 80;
         var shape = new CANNON.Sphere( size );
-        player = new CANNON.RigidBody( 10000, shape, solidMaterial );
+        player = new CANNON.RigidBody( 1000, shape, solidMaterial );
         player.position.set( 0, size, 0 );
         world.add( player );
+
+
+        /*
+        // DEBUG: wireframe sphere
+        var geometry = new THREE.SphereGeometry( size );
+        var material = new THREE.MeshBasicMaterial({ wireframe: true, color: 0x444444 });
+        debugPlayerMesh = new THREE.Mesh( geometry, material );
+        debugPlayerMesh.position.set( 0, size, 0 );
+        debugPlayerMesh.useQuaternion = true;
+        scene.add( debugPlayerMesh );
+        */
+
 
         // BIG BLOCK
         addBlock( new THREE.Vector3(300, 1000, 100), new THREE.Vector3(100, 100, 100), 1000, physicsMaterial );
@@ -216,7 +235,7 @@
         floor.rotation.x   = - Math.PI / 2;
         scene.add(floor);
 
-        // TEST GRID
+        // TEST FLOOR GRID
         /*
         var planeW = 100; // grid size
         var planeH = 100; //
@@ -237,8 +256,10 @@
         document.addEventListener('keydown', onKeyDown, false);
         document.addEventListener('keyup', onKeyUp, false);
 
-        // CONTROLS
+        // CAMERA CONTROLS (3rd person orbital).
         cameraControls = new THREE.OrbitControls(camera);
+        /* disable panning (conflicts with arrow keys) */
+        cameraControls.userPan = false;
 
         // CHARACTER
         var configOgro = {
@@ -276,7 +297,7 @@
           cloneCharacter.shareParts(baseCharacter);
           cloneCharacter.enableShadows(true);
           //cloneCharacter.setWeapon(0);
-          cloneCharacter.setSkin( 11 );
+          cloneCharacter.setSkin( playerSkin );
 
           scene.add(cloneCharacter.root);
 
@@ -306,23 +327,33 @@
         switch(event.keyCode) {
 
           case 38: /*up*/
-          case 87: /*W*/   playerControls.moveForward = true; break;
+          case 87: /*W*/
+                   playerControls.moveForward = true; break;
 
           case 40: /*down*/
-          case 83: /*S*/    playerControls.moveBackward = true; break;
+          case 83: /*S*/
+                   playerControls.moveBackward = true; break;
 
           case 37: /*left*/
-          case 65: /*A*/   playerControls.moveLeft = true; break;
+          case 65: /*A*/
+                   playerControls.moveLeft = true; break;
 
           case 39: /*right*/
-          case 68: /*D*/    playerControls.moveRight = true; break;
+          case 68: /*D*/
+                   playerControls.moveRight = true; break;
 
-          //case 67: /*C*/     playerControls.crouch = true; break;
-          //case 32: /*space*/ playerControls.jump = true; break;
-          //case 17: /*ctrl*/  playerControls.attack = true; break;
+          case 109: /*subtract*/
+          case 189: /*dash*/
+                    playerSkin--;
+                    if(playerSkin<0)playerSkin=numPlayerSkins-1;
+                    playerSkin %= numPlayerSkins;
+                    playerMesh.setSkin( playerSkin ); break;
 
-          case 17: /*ctrl*/
-            playerMesh.setSkin(Math.floor(Math.random() * numPlayerSkins)); break;
+          case 107: /*add*/
+          case 187: /*plus*/
+                    playerSkin++;
+                    playerSkin %= numPlayerSkins;
+                    playerMesh.setSkin( playerSkin ); break;
         }
       };
 
@@ -331,20 +362,20 @@
         switch(event.keyCode) {
 
           case 38: /*up*/
-          case 87: /*W*/ playerControls.moveForward = false; break;
+          case 87: /*W*/
+                   playerControls.moveForward = false; break;
 
           case 40: /*down*/
-          case 83: /*S*/    playerControls.moveBackward = false; break;
+          case 83: /*S*/
+                   playerControls.moveBackward = false; break;
 
           case 37: /*left*/
-          case 65: /*A*/    playerControls.moveLeft = false; break;
+          case 65: /*A*/
+                   playerControls.moveLeft = false; break;
 
           case 39: /*right*/
-          case 68: /*D*/     playerControls.moveRight = false; break;
-
-          //case 67: /*C*/     playerControls.crouch = false; break;
-          //case 32: /*space*/ playerControls.jump = false; break;
-          //case 17: /*ctrl*/  playerControls.attack = false; break;
+          case 68: /*D*/
+                   playerControls.moveRight = false; break;
         }
       };
 
@@ -358,41 +389,51 @@
       // update().
       var update = function() {
 
+        var delta = clock.getDelta();
+
+        cameraControls.update();
+        playerMesh.update( delta );
+
         // Players protective barrier
         if (player instanceof CANNON.RigidBody) {
 
-          // Stabilize bounding sphere.
-          var v3 = new CANNON.Vec3();
-          player.velocity.copy( v3 );
-          player.quaternion.set( 1,0,0,0 );
-          player.inertia.set( 0,0,0 );
-          player.invInertia.set( 0,0,0 );
+          // Stabilize the physics bounding sphere.
+          player.velocity.copy( new CANNON.Vec3() );
+          player.quaternion.set( 1, 0, 0, 0 );
+          player.inertia.set( 0, 0, 0 );
+          player.invInertia.set( 0, 0, 0 );
 
-          // Follow the player mesh.
+          // Set sphere to player mesh position.
           var p = playerMesh.root.position;
           player.position.set( p.x, p.y, p.z );
+
+          // debug wireframe sphere location.
+          // debugPlayerMesh.position.copy( player.position );
+          // debugPlayerMesh.quaternion.copy( player.quaternion );
         }
 
-        var l = blocks.length;
-        for (var i=0; i<l; i++) {
+        var j = blocks.length;
+        for (var i=0; i<j; i++) {
           var body = blocks[i];
           var mesh = blockMeshes[i];
           mesh.position.copy(body.position);
           mesh.quaternion.copy(body.quaternion);
         }
 
-        if (l<maxBlocks && blocks[l-1].position.y < 800) {
+        if (j<maxBlocks && blocks[j-1].position.y < 700) {
 
           // "stone blocks keep falling on my head,
           // they keep falling" ;-)
           addBlock();
         }
 
-        // enforce player and camera movement boundaries.
+        // camera movement restrictions.
         camera.position.y = Math.max(camera.position.y, 250);
         if (camera.position.length() > cameraLimit) {
           camera.position.setLength(cameraLimit);
         }
+
+        // player movement restrictions.
         playerMesh.root.position.y = Math.max(playerMesh.root.position.y, 73);
         if (playerMesh.root.position.length() > playerLimit) {
           playerMesh.root.position.setLength(playerLimit);
@@ -400,8 +441,6 @@
 
         world.step(1 / 60);
         stats.update();
-        cameraControls.update();
-        playerMesh.update( clock.getDelta() );
       }
 
       // render().
