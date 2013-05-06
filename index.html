@@ -47,7 +47,7 @@
       var world = new CANNON.World(),
           blocks = [],
           blockMeshes = [],
-          maxBlocks = 25,
+          maxBlocks = 24,
           clock = new THREE.Clock();
 
       var playerLimit = 4000,
@@ -55,36 +55,54 @@
 
       /** Materials and textures **/
 
-      // Create a default physics material.
-      var physicsMaterial = new CANNON.Material("physicsMaterial");
-      var physicsContactMaterial = new CANNON.ContactMaterial(
-        physicsMaterial,
-        physicsMaterial,
-        0.4, // friction coefficient
+      // Create a physics materials.
+      var normal = new CANNON.Material("normal");
+      var solid = new CANNON.Material("solid");
+      var bouncy = new CANNON.Material("bouncy");
+      // Define physics material contacts.
+      var normal_normal = new CANNON.ContactMaterial(
+        normal,
+        normal,
+        0.3, // friction coefficient
         0.3  // restitution
       );
-      // Create a "solid" physics material.
-      var solidMaterial = new CANNON.Material("solidMaterial");
-      var solidContactMaterial = new CANNON.ContactMaterial(
-        solidMaterial,
-        physicsMaterial,
-        0.2, // friction coefficient
+      var normal_solid = new CANNON.ContactMaterial(
+        normal,
+        solid,
+        0.7,  // friction coefficient
+        0.1  // restitution
+      );
+      var normal_bouncy = new CANNON.ContactMaterial(
+        normal,
+        bouncy,
+        0.3, // friction coefficient
         0.6  // restitution
       );
-      /*
-      // Create a "bouncy" physics material.
-      var bouncyMaterial = new CANNON.Material("bouncyMaterial");
-      var bouncyContactMaterial = new CANNON.ContactMaterial(
-        bouncyMaterial,
-        physicsMaterial,
+      var solid_solid = new CANNON.ContactMaterial(
+        solid,
+        solid,
+        0.06, // friction coefficient
+        0.0  // restitution
+      );
+      var solid_bouncy = new CANNON.ContactMaterial(
+        solid,
+        bouncy,
+        0.6, // friction coefficient
+        0.6  // restitution
+      );
+      var bouncy_bouncy = new CANNON.ContactMaterial(
+        bouncy,
+        bouncy,
         0.4, // friction coefficient
         0.8  // restitution
       );
-      */
       // Add the contact materials to the world.
-      world.addContactMaterial( physicsContactMaterial );
-      world.addContactMaterial( solidContactMaterial );
-      //world.addContactMaterial( bouncyContactMaterial );
+      world.addContactMaterial( normal_normal );
+      world.addContactMaterial( normal_solid );
+      world.addContactMaterial( normal_bouncy );
+      world.addContactMaterial( solid_solid );
+      world.addContactMaterial( solid_bouncy );
+      world.addContactMaterial( bouncy_bouncy );
 
       var floorTexture = THREE.ImageUtils.loadTexture("images/water.jpg");
       floorTexture.repeat.set(0.5, 0.8);
@@ -104,26 +122,37 @@
       /** Methods **/
 
       // addBlock().
-      var addBlock = function( vPos, vDim, mass, physMat, meshMat ) {
+      var addBlock = function( mass, vDim, physMat, meshMat, vPos, upright ) {
 
+        var m = mass || 0;
         var s = vDim instanceof THREE.Vector3 ? vDim : new THREE.Vector3( 50, 50, 50 );
-        //var p = vPos instanceof THREE.Vector3 ? vPos : new THREE.Vector3( 200 + Math.random() * 200, 1000, Math.random() * 200 );
-        var p = vPos instanceof THREE.Vector3 ? vPos : new THREE.Vector3( 50 - Math.random() * 100, 1000, 50 - Math.random() * 100 );
-        var m = mass || 5;
-        var pM = physMat || physicsMaterial;
+        var pM = physMat || normal;
         var mM = meshMat || blockMaterial;
 
+        var p;
+        if (vPos instanceof THREE.Vector3) {
+          p = vPos;
+        } else {
+          // random drop (on 8x8 grid).
+          var rX = Math.floor(Math.random() * 8 - 4) * 100 + (vDim.x + (50-vDim.x));
+          var rZ = Math.floor(Math.random() * 8 - 4) * 100 + (vDim.z + (50-vDim.z));
+          p = new THREE.Vector3( rX, 1000, rZ );
+        }
+
+        var u = typeof upright !== 'undefined' ? true : false;
 
         var hE = new CANNON.Vec3( s.x, s.y, s.z );
         var blockShape = new CANNON.Box( hE );
         var blockGeometry = new THREE.CubeGeometry( hE.x*2, hE.y*2, hE.z*2 );
         var blockBody = new CANNON.RigidBody( m, blockShape, pM );
 
-        // adds a random quaternion rotation.
-        var v1 = new CANNON.Vec3( 1, 1, 1 );
-        var q1 = new CANNON.Quaternion();
-        q1.setFromAxisAngle(v1,Math.PI * Math.random());
-        blockBody.quaternion.set(q1.x,q1.y,q1.z,q1.w);
+        if (!u) {
+          // add a random quaternion rotation.
+          var v1 = new CANNON.Vec3( 1, 1, 1 );
+          var q1 = new CANNON.Quaternion();
+          q1.setFromAxisAngle(v1,Math.PI * Math.random());
+          blockBody.quaternion.set(q1.x,q1.y,q1.z,q1.w);
+        }
 
         var blockMesh = new THREE.Mesh( blockGeometry, mM );
         world.add( blockBody );
@@ -200,14 +229,14 @@
 
         // CREATE A PHYSICS GROUND PLANE
         var groundShape = new CANNON.Plane();
-        var groundBody = new CANNON.RigidBody( 0, groundShape, physicsMaterial );
+        var groundBody = new CANNON.RigidBody( 0, groundShape, normal );
         groundBody.quaternion.setFromAxisAngle( new CANNON.Vec3( 1, 0, 0 ), - Math.PI / 2 );
         world.add( groundBody );
 
         // PLAYERS PHYSICS
         var size = 80;
         var shape = new CANNON.Sphere( size );
-        player = new CANNON.RigidBody( 1000, shape, solidMaterial );
+        player = new CANNON.RigidBody( 1000, shape, solid );
         player.position.set( 0, size, 0 );
         world.add( player );
 
@@ -224,7 +253,7 @@
 
 
         // BIG BLOCK
-        addBlock( new THREE.Vector3(300, 1000, 100), new THREE.Vector3(100, 100, 100), 1000, physicsMaterial );
+        addBlock( 10000, new THREE.Vector3(100, 100, 100), solid, blockMaterial, new THREE.Vector3(200, 100, -200), false );
 
         // FLOOR PLANE
         var geometry = new THREE.PlaneGeometry( 16000, 16000 );
@@ -235,8 +264,9 @@
         floor.rotation.x   = - Math.PI / 2;
         scene.add(floor);
 
-        // TEST FLOOR GRID
+
         /*
+        // TEST FLOOR GRID
         var planeW = 100; // grid size
         var planeH = 100; //
         var numW = 8;     // grid quantity
@@ -246,6 +276,7 @@
         plane.position.y  += 0.1;
         scene.add(plane);
         */
+
 
         // STATS
         stats = new Stats();
@@ -424,7 +455,17 @@
 
           // "stone blocks keep falling on my head,
           // they keep falling" ;-)
-          addBlock();
+
+          if (Math.random() - 0.5 > 0) {
+
+            /** regular **/
+            addBlock( 600, new THREE.Vector3(60, 60, 60) );
+
+          } else {
+
+            /** bouncy **/
+            addBlock( 300, new THREE.Vector3(40, 40, 40), bouncy);
+          }
         }
 
         // camera movement restrictions.
