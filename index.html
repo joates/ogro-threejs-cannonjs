@@ -50,59 +50,21 @@
           maxBlocks = 24,
           clock = new THREE.Clock();
 
-      var playerLimit = 4000,
+      var stepFrequency = 120,
+          playerLimit = 4000,
           cameraLimit = 1500;
 
       /** Materials and textures **/
 
-      // Create a physics materials.
-      var normal = new CANNON.Material("normal");
-      var solid = new CANNON.Material("solid");
-      var bouncy = new CANNON.Material("bouncy");
+      // Create physics material.
+      var physicsMaterial = new CANNON.Material();
+
       // Define physics material contacts.
-      var normal_normal = new CANNON.ContactMaterial(
-        normal,
-        normal,
-        0.3, // friction coefficient
-        0.3  // restitution
-      );
-      var normal_solid = new CANNON.ContactMaterial(
-        normal,
-        solid,
-        0.7,  // friction coefficient
-        0.1  // restitution
-      );
-      var normal_bouncy = new CANNON.ContactMaterial(
-        normal,
-        bouncy,
-        0.3, // friction coefficient
-        0.6  // restitution
-      );
-      var solid_solid = new CANNON.ContactMaterial(
-        solid,
-        solid,
-        0.06, // friction coefficient
-        0.0  // restitution
-      );
-      var solid_bouncy = new CANNON.ContactMaterial(
-        solid,
-        bouncy,
-        0.6, // friction coefficient
-        0.6  // restitution
-      );
-      var bouncy_bouncy = new CANNON.ContactMaterial(
-        bouncy,
-        bouncy,
-        0.4, // friction coefficient
-        0.8  // restitution
-      );
+      var contactMaterial = new CANNON.ContactMaterial(
+        physicsMaterial, physicsMaterial,  1.0, 0.1 );
+
       // Add the contact materials to the world.
-      world.addContactMaterial( normal_normal );
-      world.addContactMaterial( normal_solid );
-      world.addContactMaterial( normal_bouncy );
-      world.addContactMaterial( solid_solid );
-      world.addContactMaterial( solid_bouncy );
-      world.addContactMaterial( bouncy_bouncy );
+      world.addContactMaterial( contactMaterial );
 
       var floorTexture = THREE.ImageUtils.loadTexture("images/water.jpg");
       floorTexture.repeat.set(0.5, 0.8);
@@ -124,9 +86,9 @@
       // addBlock().
       var addBlock = function( mass, vDim, physMat, meshMat, vPos, upright ) {
 
-        var m = mass || 0;
+        var m = mass || 200;
         var s = vDim instanceof THREE.Vector3 ? vDim : new THREE.Vector3( 50, 50, 50 );
-        var pM = physMat || normal;
+        var pM = physMat || physicsMaterial;
         var mM = meshMat || blockMaterial;
 
         var p;
@@ -216,27 +178,27 @@
         world.quatNormalizeFast = false;
         var solver = new CANNON.GSSolver();
         world.defaultContactMaterial.contactEquationStiffness = 1e9;
-        world.defaultContactMaterial.contactEquationRegularizationTime = 4;
-        solver.iterations = 7;
-        solver.tolerance = 0.1;
+        world.defaultContactMaterial.contactEquationRegularizationTime = 3;
+        solver.iterations = 20;
+        solver.tolerance = 0;
         var split = true;
         if (split)
           world.solver = new CANNON.SplitSolver(solver);
         else
           world.solver = solver;
-        world.gravity.set( 0, -2000, 0 );
+        world.gravity.set( 0, -1200, 0 );
         world.broadphase = new CANNON.NaiveBroadphase();
 
         // CREATE A PHYSICS GROUND PLANE
         var groundShape = new CANNON.Plane();
-        var groundBody = new CANNON.RigidBody( 0, groundShape, normal );
+        var groundBody = new CANNON.RigidBody( 0, groundShape, physicsMaterial );
         groundBody.quaternion.setFromAxisAngle( new CANNON.Vec3( 1, 0, 0 ), - Math.PI / 2 );
         world.add( groundBody );
 
         // PLAYERS PHYSICS
         var size = 80;
         var shape = new CANNON.Sphere( size );
-        player = new CANNON.RigidBody( 1000, shape, solid );
+        player = new CANNON.RigidBody( 25, shape, physicsMaterial );
         player.position.set( 0, size, 0 );
         world.add( player );
 
@@ -253,7 +215,7 @@
 
 
         // BIG BLOCK
-        addBlock( 10000, new THREE.Vector3(100, 100, 100), solid, blockMaterial, new THREE.Vector3(200, 100, -200), false );
+        addBlock( 10000, new THREE.Vector3(100, 100, 100), physicsMaterial, blockMaterial, new THREE.Vector3(200, 100, -200), false );
 
         // FLOOR PLANE
         var geometry = new THREE.PlaneGeometry( 16000, 16000 );
@@ -459,12 +421,12 @@
           if (Math.random() - 0.5 > 0) {
 
             /** regular **/
-            addBlock( 600, new THREE.Vector3(60, 60, 60) );
+            addBlock( 500, new THREE.Vector3(60, 60, 60) );
 
           } else {
 
             /** bouncy **/
-            addBlock( 300, new THREE.Vector3(40, 40, 40), bouncy);
+            addBlock( 500, new THREE.Vector3(40, 40, 40));
           }
         }
 
@@ -480,7 +442,11 @@
           playerMesh.root.position.setLength(playerLimit);
         }
 
-        world.step(1 / 60);
+        // Step world
+        for(var i=0; i<Math.ceil(stepFrequency/60); i++){
+            world.step(1/stepFrequency);
+        }
+
         stats.update();
       }
 
