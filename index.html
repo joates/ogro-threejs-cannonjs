@@ -102,8 +102,8 @@
         //camera.position.set(-500, 250, 500);
 
         // CONTROLS
-        cameraControls = new THREE.OrbitControls( camera );
-        cameraControls.userPan = false;
+        //cameraControls = new THREE.OrbitControls( camera );
+        //cameraControls.userPan = false;
 
         // SCENE
         scene = new THREE.Scene();
@@ -213,7 +213,7 @@
 
         // EVENTS
         window.addEventListener('resize', onWindowResize, false);
-        document.addEventListener('mousedown', onMouseDown, false );
+        //document.addEventListener('mousedown', onMouseDown, false );
         document.addEventListener('keydown', onKeyDown, false);
         document.addEventListener('keyup', onKeyUp, false);
 
@@ -281,7 +281,7 @@
         playerMesh.update( delta );
 
         TWEEN.update();
-        cameraControls.update();
+        //cameraControls.update();
         stats.update();
 
         // Players protective barrier
@@ -327,8 +327,11 @@
           }
         }
 
-        var cameraRelativeOffset = new THREE.Vector3( 0, 100, -900 );
-        var cameraOffset = cameraRelativeOffset.applyMatrix4( playerMesh.root.matrixWorld );
+        // Reset to local coordinate system.
+        var matrix = new THREE.Matrix4().copy( playerMesh.root.matrixWorld );
+        matrix.setPosition( new THREE.Vector3( 0, 73, 0 ) )
+        var offset = new THREE.Vector3( 0, 100, -900 );
+        var cameraOffset = offset.applyMatrix4( matrix );
 
 
         // Camera TWEEN.
@@ -340,7 +343,8 @@
           .interpolation( TWEEN.Interpolation.Bezier )
           .easing( TWEEN.Easing.Sinusoidal.InOut ).start();
 
-          camera.lookAt( playerMesh.root.position );
+          //camera.lookAt( playerMesh.root.position );
+          camera.lookAt( playerMesh.root.rotation );
         }
 
 
@@ -389,6 +393,7 @@
 
       function onKeyDown (event) {
 
+        //console.log(playerMesh.root);
         cameraLookAround = false;
 
         switch(event.keyCode) {
