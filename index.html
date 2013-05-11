@@ -216,7 +216,6 @@
 
         // EVENTS
         window.addEventListener('resize', onWindowResize, false);
-        document.addEventListener('mousedown', onMouseDown, false );
         document.addEventListener('keydown', onKeyDown, false);
         document.addEventListener('keyup', onKeyUp, false);
 
@@ -296,7 +295,11 @@
         // Players protective barrier
         if (player instanceof CANNON.RigidBody) {
 
-          // Stabilize the physics bounding sphere.
+          // TODO:
+          // This is currently reset each frame, but it
+          // should influence the player mesh location !!
+          //
+          // (Stabilize the physics bounding sphere)
           player.velocity.copy( new CANNON.Vec3() );
           player.quaternion.set( 1, 0, 0, 0 );
           player.inertia.set( 0, 0, 0 );
@@ -315,8 +318,8 @@
         for (var i=0; i<j; i++) {
           var body = blocks[i];
           var mesh = blockMeshes[i];
-          mesh.position.copy(body.position);
-          mesh.quaternion.copy(body.quaternion);
+          mesh.position.copy( body.position );
+          mesh.quaternion.copy( body.quaternion );
         }
 
         if (j<maxBlocks && blocks[j-1].position.y < 700) {
@@ -353,7 +356,7 @@
           .interpolation( TWEEN.Interpolation.Bezier )
           .easing( TWEEN.Easing.Sinusoidal.InOut ).start();
 
-          //camera.lookAt( playerMesh.root.position );
+          // Set camera rotation.
           camera.lookAt( cameraTarget );
         }
 
@@ -361,7 +364,7 @@
         // player movement restrictions.
         playerMesh.root.position.y = Math.max(playerMesh.root.position.y, playerOrigin.y);
         if (playerMesh.root.position.length() > playerLimit) {
-          playerMesh.root.position.setLength(playerLimit);
+          playerMesh.root.position.setLength( playerLimit );
         }
 
         // Step world
@@ -389,18 +392,6 @@
         camera.updateProjectionMatrix();
       }
 
-      function onMouseDown( event ) {
-        event.preventDefault();
-        cameraLookAround = true;
-        //cameraControls.center.copy( playerMesh.root.position );
-        cameraControls.center.copy( cameraTarget );
-        //document.addEventListener( 'mouseup', onMouseUp, false );
-      }
-
-      function onMouseUp( event ) {
-        //cameraLookAround = false;
-        //document.removeEventListener( 'mouseup', onMouseUp );
-      }
 
       function onKeyDown (event) {
 

@@ -224,6 +224,10 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 		event.preventDefault();
 
+		/** Added by joates (11-May-2013) **/
+		cameraLookAround = true;
+		cameraControls.center.copy( cameraTarget );
+
 		if ( event.button === 0 ) {
 
 			state = STATE.ROTATE;
