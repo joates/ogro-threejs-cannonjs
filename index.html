@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>WebGL</title>
+    <title>keys.move|mouse.look</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
     <link rel="stylesheet" type="text/css" href="css/styles.css" />
@@ -30,6 +30,7 @@
       var container, scene, renderer;
 
       var camera,
+          cameraTarget = new THREE.Vector3(),
           cameraControls,
           cameraLookAround = true,
           cameraLimit = 2000;
@@ -170,6 +171,7 @@
         var shape = new CANNON.Sphere( size );
         player = new CANNON.RigidBody( 25, shape, physicsMaterial );
         player.position.set( 0, size, 0 );
+        //player.linearDamping = 0.9;
         world.add( player );
 
 
@@ -246,6 +248,7 @@
         playerMesh.scale = 3;
         playerMesh.controls = playerControls;
         playerOrigin.copy( playerMesh.root.position );
+        cameraTarget.copy( playerOrigin ).setY( 150 );
 
         var baseCharacter = new THREE.MD2CharacterComplex();
         baseCharacter.scale = 3;
@@ -339,7 +342,7 @@
           // Calculate camera offset.
           var matrix = new THREE.Matrix4().copy( playerMesh.root.matrix );
           matrix.setPosition( playerOrigin )
-          var offset = new THREE.Vector3( 0, 100, -900 );
+          var offset = new THREE.Vector3( 0, 227, -800 );
           var cameraOffset = offset.applyMatrix4( matrix );
 
           // Create a smooth camera transition.
@@ -351,7 +354,7 @@
           .easing( TWEEN.Easing.Sinusoidal.InOut ).start();
 
           //camera.lookAt( playerMesh.root.position );
-          camera.lookAt( playerOrigin );
+          camera.lookAt( cameraTarget );
         }
 
 
@@ -390,7 +393,7 @@
         event.preventDefault();
         cameraLookAround = true;
         //cameraControls.center.copy( playerMesh.root.position );
-        cameraControls.center.copy( playerOrigin );
+        cameraControls.center.copy( cameraTarget );
         //document.addEventListener( 'mouseup', onMouseUp, false );
       }
 
