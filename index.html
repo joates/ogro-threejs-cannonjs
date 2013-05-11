@@ -31,14 +31,15 @@
 
       var camera,
           cameraControls,
-          cameraLookAround = false,
-          cameraLimit = 1500;
+          cameraLookAround = true,
+          cameraLimit = 2000;
 
       var WIDTH  = window.innerWidth,
           HEIGHT = window.innerHeight;
 
       var player,
           playerMesh,
+          playerOrigin = new THREE.Vector3(),
           playerControls = {
             moveLeft:  false, moveForward:  false, 
             moveRight: false, moveBackward: false },
@@ -99,11 +100,13 @@
 
         // CAMERA
         camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 10000);
-        //camera.position.set(-500, 250, 500);
+
+        // set initial camera position.
+        camera.position.copy( new THREE.Vector3( -cameraLimit, cameraLimit/2, cameraLimit ) );
 
         // CONTROLS
-        //cameraControls = new THREE.OrbitControls( camera );
-        //cameraControls.userPan = false;
+        cameraControls = new THREE.OrbitControls( camera );
+        cameraControls.userPan = false;
 
         // SCENE
         scene = new THREE.Scene();
@@ -193,7 +196,6 @@
         floor.rotation.x   = - Math.PI / 2;
         scene.add(floor);
 
-
         /*
         // TEST FLOOR GRID
         var planeW = 100; // grid size
@@ -206,14 +208,13 @@
         scene.add(plane);
         */
 
-
         // STATS
         stats = new Stats();
         container.appendChild(stats.domElement);
 
         // EVENTS
         window.addEventListener('resize', onWindowResize, false);
-        //document.addEventListener('mousedown', onMouseDown, false );
+        document.addEventListener('mousedown', onMouseDown, false );
         document.addEventListener('keydown', onKeyDown, false);
         document.addEventListener('keyup', onKeyUp, false);
 
@@ -244,6 +245,7 @@
         playerMesh = new THREE.MD2CharacterComplex();
         playerMesh.scale = 3;
         playerMesh.controls = playerControls;
+        playerOrigin.copy( playerMesh.root.position );
 
         var baseCharacter = new THREE.MD2CharacterComplex();
         baseCharacter.scale = 3;
@@ -261,6 +263,10 @@
           gyro.add(camera);
 
           playerMesh.root.add(gyro);
+
+          // set initial player position.
+          playerMesh.root.position.x = -250;
+          playerMesh.root.position.z = -250;
         };
 
         baseCharacter.loadParts(configOgro);
@@ -281,7 +287,7 @@
         playerMesh.update( delta );
 
         TWEEN.update();
-        //cameraControls.update();
+        cameraControls.update();
         stats.update();
 
         // Players protective barrier
@@ -327,15 +333,16 @@
           }
         }
 
-        // Reset to local coordinate system.
-        var matrix = new THREE.Matrix4().copy( playerMesh.root.matrix );
-        matrix.setPosition( new THREE.Vector3( 0, 73, 0 ) )
-        var offset = new THREE.Vector3( 0, 100, -900 );
-        var cameraOffset = offset.applyMatrix4( matrix );
-
-
         // Camera TWEEN.
         if (!cameraLookAround) {
+
+          // Calculate camera offset.
+          var matrix = new THREE.Matrix4().copy( playerMesh.root.matrix );
+          matrix.setPosition( playerOrigin )
+          var offset = new THREE.Vector3( 0, 100, -900 );
+          var cameraOffset = offset.applyMatrix4( matrix );
+
+          // Create a smooth camera transition.
           new TWEEN.Tween( camera.position ).to( {
             x: cameraOffset.x,
             y: cameraOffset.y,
@@ -344,12 +351,12 @@
           .easing( TWEEN.Easing.Sinusoidal.InOut ).start();
 
           //camera.lookAt( playerMesh.root.position );
-          camera.lookAt( playerMesh.root.rotation );
+          camera.lookAt( playerOrigin );
         }
 
 
         // player movement restrictions.
-        playerMesh.root.position.y = Math.max(playerMesh.root.position.y, 73);
+        playerMesh.root.position.y = Math.max(playerMesh.root.position.y, playerOrigin.y);
         if (playerMesh.root.position.length() > playerLimit) {
           playerMesh.root.position.setLength(playerLimit);
         }
@@ -382,19 +389,17 @@
       function onMouseDown( event ) {
         event.preventDefault();
         cameraLookAround = true;
-        cameraControls.center.copy( playerMesh.root.position );
-        document.addEventListener( 'mouseup', onMouseUp, false );
+        //cameraControls.center.copy( playerMesh.root.position );
+        cameraControls.center.copy( playerOrigin );
+        //document.addEventListener( 'mouseup', onMouseUp, false );
       }
 
       function onMouseUp( event ) {
         //cameraLookAround = false;
-        document.removeEventListener( 'mouseup', onMouseUp );
+        //document.removeEventListener( 'mouseup', onMouseUp );
       }
 
       function onKeyDown (event) {
-
-        //console.log(playerMesh.root);
-        cameraLookAround = false;
 
         switch(event.keyCode) {
 
@@ -426,6 +431,11 @@
                     playerSkin++;
                     playerSkin %= numPlayerSkins;
                     playerMesh.setSkin( playerSkin ); break;
+        }
+
+        var pc = playerControls;
+        if (pc.moveForward || pc.moveLeft || pc.moveRight || pc.moveBackward) {
+          cameraLookAround = false;
         }
       };
 

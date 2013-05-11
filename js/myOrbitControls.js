@@ -34,7 +34,7 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 	this.minDistance = 0;
 	//this.maxDistance = Infinity;
-	this.maxDistance = 2000;
+	this.maxDistance = cameraLimit;
 
 	this.keys = { LEFT: 37, UP: 38, RIGHT: 39, BOTTOM: 40 };
 
