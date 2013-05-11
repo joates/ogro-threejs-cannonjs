@@ -11,7 +11,7 @@
     <script src='js/Detector.js'></script>
     <script src='js/libs/stats.min.js'></script>
     <script src='js/MD2CharacterComplex.js'></script>
-    <script src="js/controls/OrbitControls.js"></script>
+    <script src="js/myOrbitControls.js"></script>
   </head>
 
   <body>
@@ -328,7 +328,7 @@
         }
 
         // Reset to local coordinate system.
-        var matrix = new THREE.Matrix4().copy( playerMesh.root.matrixWorld );
+        var matrix = new THREE.Matrix4().copy( playerMesh.root.matrix );
         matrix.setPosition( new THREE.Vector3( 0, 73, 0 ) )
         var offset = new THREE.Vector3( 0, 100, -900 );
         var cameraOffset = offset.applyMatrix4( matrix );
